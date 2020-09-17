@@ -1,0 +1,22 @@
+{
+  "name": "@webdeploy/plugin-manifest",
+  "version": "1.0.0-dev",
+  "description": "Deploy plugin to generate manifests from output file references",
+  "main": "plugin.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RogerGee/webdeploy-plugin-manifest.git"
+  },
+  "keywords": [
+    "webdeploy"
+  ],
+  "author": "Roger Gee",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/RogerGee/webdeploy-plugin-manifest/issues"
+  },
+  "homepage": "https://github.com/RogerGee/webdeploy-plugin-manifest#readme"
+}
