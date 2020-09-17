@@ -18,5 +18,8 @@
   "bugs": {
     "url": "https://github.com/RogerGee/webdeploy-plugin-manifest/issues"
   },
-  "homepage": "https://github.com/RogerGee/webdeploy-plugin-manifest#readme"
+  "homepage": "https://github.com/RogerGee/webdeploy-plugin-manifest#readme",
+  "dependencies": {
+    "minimatch": "^3.0.4"
+  }
 }

@@ -115,8 +115,8 @@ class JsonManifestSettings extends ManifestSettings {
     constructor(settings) {
         super(settings);
 
-        this.template = check_optional("manifest",settings,"template",false,"string");
-        this.prop = check_optional("manifest",settings,"prop","manifest","string");
+        this.template = check_optional(check,"manifest",settings,"template",false,"string");
+        this.prop = check_optional(check,"manifest",settings,"prop","manifest","string");
     }
 }
 
@@ -171,7 +171,7 @@ class PluginSettings {
         }
         check_array("settings",this,"targets","string");
 
-        this.targets = check_optional(
+        this.refs = check_optional(
             check_array,
             "settings",
             settings,
@@ -188,6 +188,7 @@ class PluginSettings {
             false,
             "object"
         );
+        this.manifest.groups = this.groups;
 
         this.disableTracking = check_optional(
             check,
