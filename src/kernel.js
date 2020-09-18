@@ -5,6 +5,7 @@
  */
 
 const fs = require("fs");
+const path = require("path");
 const minimatch = require("minimatch");
 const merge_refs = require("./merge");
 const { promisify } = require("util");
@@ -35,14 +36,27 @@ function flatten_refs(list) {
 
     for (let i = 0;i < list.length;++i) {
         if (Array.isArray(list[i])) {
-            result = result.concat(list[i].map((ref) => ref.entry));
+            result = result.concat(list[i]);
         }
         else {
-            result.push(list[i].entry);
+            result.push(list[i]);
         }
     }
 
     return result;
+}
+
+function make_random_id(prefix,suffix) {
+    prefix = prefix || "";
+    suffix = suffix || "";
+
+    return prefix+Math.floor(Math.random() * 10**20).toString(36)+suffix;
+}
+
+function apply_file_suffix(filePath,suffix) {
+    const parsed = path.parse(filePath);
+    parsed.name += suffix;
+    return path.join(parsed.dir,parsed.name + parsed.ext);
 }
 
 class Kernel {
@@ -56,6 +70,7 @@ class Kernel {
         }
 
         this.unlink = [];
+        this.suffix = "." + make_random_id();
     }
 
     async exec() {
@@ -68,13 +83,22 @@ class Kernel {
             refs = await this.preprocessOutput(refs,this.settings.output);
         }
 
-        const manifest = manifestFactory(flatten_refs(refs),this.settings.manifest);
+        const saved = refs;
+
+        refs = flatten_refs(refs);
+        if (!this.settings.disableCacheBusting) {
+            this.applyCacheBusting(refs);
+        }
+
+        refs = refs.map((record) => record.entry);
+
+        const manifest = manifestFactory(refs,this.settings.manifest);
         const target = this.context.createTarget(this.settings.output);
         target.stream.end(await manifest.generate(this.context));
 
         await this.context.chain("write");
         if (!this.settings.disableTracking) {
-            await this.postprocessOutput(refs,this.settings.output);
+            await this.postprocessOutput(saved,this.settings.output);
         }
     }
 
@@ -92,7 +116,8 @@ class Kernel {
                 targetRefs.push([{
                     file: targetPath,
                     entry: targetPath,
-                    unlink:true
+                    unlink: true,
+                    target: target
                 }]);
             }
         });
@@ -120,7 +145,7 @@ class Kernel {
         for (let i = 0;i < this.unlink.length;++i) {
             const filepath = this.context.makeDeployPath(this.unlink[i]);
             try {
-                const err = await unlink(filepath);
+                await unlink(filepath);
                 this.context.logger.log("Unlinked _" + filepath + "_");
             } catch (err) {
                 if (err.code != "ENOENT") {
@@ -133,6 +158,27 @@ class Kernel {
             refs,
             manifest
         });
+    }
+
+    applyCacheBusting(refs) {
+        for (let i = 0;i < refs.length;++i) {
+            const ref = refs[i];
+
+            if (ref.unlink) {
+                if (ref.target) {
+                    const newName = apply_file_suffix(
+                        ref.target.getTargetName(),
+                        this.suffix
+                    );
+                    const newTarget = this.context.passTarget(ref.target,newName);
+                    ref.entry = newTarget.getSourceTargetPath();
+                    delete ref.target;
+                }
+                else {
+                    ref.entry = apply_file_suffix(ref.entry,this.suffix);
+                }
+            }
+        }
     }
 }
 

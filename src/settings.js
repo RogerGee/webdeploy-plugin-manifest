@@ -199,6 +199,15 @@ class PluginSettings {
             "boolean"
         );
 
+        this.disableCacheBusting = check_optional(
+            check,
+            "settings",
+            settings,
+            "disableCacheBusting",
+            false,
+            "boolean"
+        );
+
         this._normalizeRefs();
     }
 
