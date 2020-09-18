@@ -177,7 +177,7 @@ class PluginSettings {
             settings,
             "refs",
             [],
-            "string"
+            "string","object","array"
         );
 
         this.groups = check_optional(
@@ -198,6 +198,48 @@ class PluginSettings {
             false,
             "boolean"
         );
+
+        this._normalizeRefs();
+    }
+
+    _normalizeRefs() {
+        // Ensure "refs" is a list of lists (maximum of 1-level).
+
+        function norm(list,context,level) {
+            for (let i = 0;i < list.length;++i) {
+                let ref = list[i];
+                const ctx = format_context(context,i);
+
+                if (Array.isArray(ref)) {
+                    if (level >= 1) {
+                        throw new PluginError("'%s' cannot be a nested list",ctx);
+                    }
+
+                    norm(ref,ctx,level+1);
+                    continue;
+                }
+
+                // If the reference was a scalar, transform it into a singleton
+                // list.
+
+                if (typeof ref === "string") {
+                    ref = { file:ref, entry:ref, unlink:false };
+                }
+                else if (typeof ref !== "object" || !ref.file) {
+                    throw new PluginError("'%s' must have form { file, unlink }",ctx);
+                }
+                else {
+                    if (!ref.unlink) {
+                        ref.unlink = true;
+                    }
+                    ref.entry = ref.file;
+                }
+
+                list[i] = [ref];
+            }
+        }
+
+        norm(this.refs,"settings.refs",0);
     }
 }
 
