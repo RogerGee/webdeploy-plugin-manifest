@@ -90,11 +90,12 @@ class Kernel {
 
     buildMatrix(matrix) {
         const found = new Set();
+        const isDev = this.context.isDevDeployment();
 
         // Process initial refs in matrix. Apply cache busting if configured.
         flatten_matrix(matrix).forEach((ref) => {
             const target = this.context.lookupTarget(ref.file);
-            if (target && !this.settings.disableCacheBusting) {
+            if (target && !this.settings.disableCacheBusting && !isDev) {
                 const newName = apply_file_suffix(
                     target.getTargetName(),
                     this.suffix
@@ -119,7 +120,7 @@ class Kernel {
                 if (this.settings.targets.some((glob) => minimatch(targetPath,glob))) {
                     let entry;
                     let originalPath = targetPath;
-                    if (!this.settings.disableCacheBusting) {
+                    if (!this.settings.disableCacheBusting && !isDev) {
                         const newName = apply_file_suffix(
                             target.getTargetName(),
                             this.suffix
