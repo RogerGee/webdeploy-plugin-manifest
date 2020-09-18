@@ -31,16 +31,11 @@ function manifestFactory(refs,options) {
     throw new PluginError("invalid manifest type '%s'",options.type);
 }
 
-function flatten_refs(list) {
+function flatten_matrix(list) {
     let result = [];
 
     for (let i = 0;i < list.length;++i) {
-        if (Array.isArray(list[i])) {
-            result = result.concat(list[i]);
-        }
-        else {
-            result.push(list[i]);
-        }
+        result = result.concat(list[i]);
     }
 
     return result;
@@ -74,55 +69,77 @@ class Kernel {
     }
 
     async exec() {
-        let refs = this.settings.refs.slice();
+        let matrix = this.settings.refs.slice();
+        this.buildMatrix(matrix);
 
-        // Augment the extra refs with the target refs.
-
-        refs = refs.concat(this.collectTargets());
+        // Augment the refs with previous output tracking information.
         if (!this.settings.disableTracking) {
-            refs = await this.preprocessOutput(refs,this.settings.output);
+            matrix = await this.preprocessOutput(matrix,this.settings.output);
         }
 
-        const saved = refs;
-
-        refs = flatten_refs(refs);
-        if (!this.settings.disableCacheBusting) {
-            this.applyCacheBusting(refs);
-        }
-
-        refs = refs.map((record) => record.entry);
-
-        const manifest = manifestFactory(refs,this.settings.manifest);
+        const list = flatten_matrix(matrix).map((record) => record.entry);
+        const manifest = manifestFactory(list,this.settings.manifest);
         const target = this.context.createTarget(this.settings.output);
         target.stream.end(await manifest.generate(this.context));
 
         await this.context.chain("write");
         if (!this.settings.disableTracking) {
-            await this.postprocessOutput(saved,this.settings.output);
+            await this.postprocessOutput(matrix,this.settings.output);
         }
     }
 
-    collectTargets() {
-        const targetRefs = [];
-        if (this.settings.targets.length == 0) {
-            return targetRefs;
-        }
+    buildMatrix(matrix) {
+        const found = new Set();
 
-        this.context.forEachTarget((target) => {
-            let targetPath = target.getSourceTargetPath();
+        // Process initial refs in matrix. Apply cache busting if configured.
+        flatten_matrix(matrix).forEach((ref) => {
+            const target = this.context.lookupTarget(ref.file);
+            if (target && !this.settings.disableCacheBusting) {
+                const newName = apply_file_suffix(
+                    target.getTargetName(),
+                    this.suffix
+                );
 
-            if (this.settings.targets.some((glob) => minimatch(targetPath,glob))) {
-                // Each target implies its own singleton group of refs.
-                targetRefs.push([{
-                    file: targetPath,
-                    entry: targetPath,
-                    unlink: true,
-                    target: target
-                }]);
+                const newTarget = this.context.passTarget(target,newName);
+                ref.entry = newTarget.getSourceTargetPath();
+                ref.unlink = true;
+
+                found.add(ref.entry);
             }
         });
 
-        return targetRefs;
+        // Add in refs from matched targets. Apply cache busting if configured.
+        if (this.settings.targets.length > 0) {
+            this.context.forEachTarget((target) => {
+                let targetPath = target.getSourceTargetPath();
+                if (found.has(targetPath)) {
+                    return;
+                }
+
+                if (this.settings.targets.some((glob) => minimatch(targetPath,glob))) {
+                    let entry;
+                    let originalPath = targetPath;
+                    if (!this.settings.disableCacheBusting) {
+                        const newName = apply_file_suffix(
+                            target.getTargetName(),
+                            this.suffix
+                        );
+
+                        const newTarget = this.context.passTarget(target,newName);
+                        targetPath = newTarget.getSourceTargetPath();
+                    }
+
+                    // Each target implies its own singleton group of refs.
+                    matrix.push([{
+                        file: originalPath,
+                        entry: targetPath,
+                        unlink: true
+                    }]);
+
+                    found.add(targetPath);
+                }
+            });
+        }
     }
 
     async preprocessOutput(refs,manifest) {
@@ -146,6 +163,7 @@ class Kernel {
             const filepath = this.context.makeDeployPath(this.unlink[i]);
             try {
                 await unlink(filepath);
+                this.context.graph.removeConnectionGivenProduct(this.unlink[i]);
                 this.context.logger.log("Unlinked _" + filepath + "_");
             } catch (err) {
                 if (err.code != "ENOENT") {
@@ -158,27 +176,6 @@ class Kernel {
             refs,
             manifest
         });
-    }
-
-    applyCacheBusting(refs) {
-        for (let i = 0;i < refs.length;++i) {
-            const ref = refs[i];
-
-            if (ref.unlink) {
-                if (ref.target) {
-                    const newName = apply_file_suffix(
-                        ref.target.getTargetName(),
-                        this.suffix
-                    );
-                    const newTarget = this.context.passTarget(ref.target,newName);
-                    ref.entry = newTarget.getSourceTargetPath();
-                    delete ref.target;
-                }
-                else {
-                    ref.entry = apply_file_suffix(ref.entry,this.suffix);
-                }
-            }
-        }
     }
 }
 

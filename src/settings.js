@@ -177,7 +177,7 @@ class PluginSettings {
             settings,
             "refs",
             [],
-            "string","object","array"
+            "string","array"
         );
 
         this.groups = check_optional(
@@ -228,23 +228,8 @@ class PluginSettings {
                     continue;
                 }
 
-                // If the reference was a scalar, transform it into a singleton
-                // list.
-
-                if (typeof ref === "string") {
-                    ref = { file:ref, entry:ref, unlink:false };
-                }
-                else if (typeof ref !== "object" || !ref.file) {
-                    throw new PluginError("'%s' must have form { file, unlink }",ctx);
-                }
-                else {
-                    if (!ref.unlink) {
-                        ref.unlink = true;
-                    }
-                    ref.entry = ref.file;
-                }
-
-                list[i] = [ref];
+                check(ctx,list,i,"string");
+                list[i] = [{ file:ref, entry:ref, unlink:false }];
             }
         }
 
