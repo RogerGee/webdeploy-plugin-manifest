@@ -214,26 +214,20 @@ class PluginSettings {
     _normalizeRefs() {
         // Ensure "refs" is a list of lists (maximum of 1-level).
 
-        function norm(list,context,level) {
-            for (let i = 0;i < list.length;++i) {
-                let ref = list[i];
-                const ctx = format_context(context,i);
+        for (let i = 0;i < this.refs.length;++i) {
+            let ref = this.refs[i];
 
-                if (Array.isArray(ref)) {
-                    if (level >= 1) {
-                        throw new PluginError("'%s' cannot be a nested list",ctx);
-                    }
-
-                    norm(ref,ctx,level+1);
-                    continue;
+            if (Array.isArray(ref)) {
+                const ctx = format_context("settings.refs",i);
+                check_array(ctx,this.refs,i,"string");
+                for (let j = 0;j < ref.length;++j) {
+                    ref[j] = { file:ref[j], entry:ref[j], unlink:false };
                 }
-
-                check(ctx,list,i,"string");
-                list[i] = [{ file:ref, entry:ref, unlink:false }];
+            }
+            else {
+                this.refs[i] = [{ file:ref, entry:ref, unlink:false }];
             }
         }
-
-        norm(this.refs,"settings.refs",0);
     }
 }
 

@@ -94,17 +94,19 @@ class Kernel {
 
         // Process initial refs in matrix. Apply cache busting if configured.
         flatten_matrix(matrix).forEach((ref) => {
-            const target = this.context.lookupTarget(ref.file);
-            if (target && !this.settings.disableCacheBusting && !isDev) {
-                const newName = apply_file_suffix(
-                    target.getTargetName(),
-                    this.suffix
-                );
+            let target = this.context.lookupTarget(ref.file);
+            if (target) {
+                if (!this.settings.disableCacheBusting && !isDev) {
+                    const newName = apply_file_suffix(
+                        target.getTargetName(),
+                        this.suffix
+                    );
 
-                const newTarget = this.context.passTarget(target,newName);
-                ref.entry = newTarget.getSourceTargetPath();
+                    target = this.context.passTarget(target,newName);
+                    ref.entry = target.getSourceTargetPath();
+                }
+
                 ref.unlink = true;
-
                 found.add(ref.entry);
             }
         });
