@@ -73,20 +73,25 @@ class Kernel {
         let matrix = this.settings.refs.slice();
         this.buildMatrix(matrix);
 
+        // Just write out if there's no manifest to generate.
+        if (matrix.length == 0) {
+            return this.context.chain("write");
+        }
+
         // Augment the refs with previous output tracking information.
         if (!this.settings.disableTracking) {
             matrix = await this.preprocessOutput(matrix,this.settings.output);
         }
 
+        // Generate the manifest.
         const list = flatten_matrix(matrix).map((record) => record.entry);
-        if (list.length > 0) {
-            const manifest = manifestFactory(list,this.settings.manifest);
-            const target = this.context.createTarget(this.settings.output);
-            target.stream.end(await manifest.generate(this.context));
-        }
+        const manifest = manifestFactory(list,this.settings.manifest);
+        const target = this.context.createTarget(this.settings.output);
+        target.stream.end(await manifest.generate(this.context));
 
+        // Handle output.
         await this.context.chain("write");
-        if (list.length > 0 && !this.settings.disableTracking) {
+        if (!this.settings.disableTracking) {
             await this.postprocessOutput(matrix,this.settings.output);
         }
     }
