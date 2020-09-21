@@ -78,12 +78,14 @@ class Kernel {
         }
 
         const list = flatten_matrix(matrix).map((record) => record.entry);
-        const manifest = manifestFactory(list,this.settings.manifest);
-        const target = this.context.createTarget(this.settings.output);
-        target.stream.end(await manifest.generate(this.context));
+        if (list.length > 0) {
+            const manifest = manifestFactory(list,this.settings.manifest);
+            const target = this.context.createTarget(this.settings.output);
+            target.stream.end(await manifest.generate(this.context));
+        }
 
         await this.context.chain("write");
-        if (!this.settings.disableTracking) {
+        if (list.length > 0 && !this.settings.disableTracking) {
             await this.postprocessOutput(matrix,this.settings.output);
         }
     }
