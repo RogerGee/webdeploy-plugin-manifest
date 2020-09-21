@@ -10,6 +10,7 @@ const minimatch = require("minimatch");
 const merge_refs = require("./merge");
 const { promisify } = require("util");
 const { JsonManifest } = require("./json");
+const { HTMLManifest } = require("./html")
 const { PluginError } = require("./error");
 const { PluginSettings } = require("./settings");
 
@@ -21,7 +22,7 @@ function manifestFactory(refs,options) {
     }
 
     if (options.type == "html") {
-        return; //TODO
+        return new HTMLManifest(refs,options);
     }
 
     if (options.type == "php") {
