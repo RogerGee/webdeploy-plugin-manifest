@@ -74,7 +74,7 @@ class Kernel {
         this.buildMatrix(matrix);
 
         // Just write out if there's no manifest to generate.
-        if (matrix.length == 0) {
+        if (matrix.length == 0 && !(await this.isManifestOutOfDate())) {
             return this.context.chain("write");
         }
 
@@ -187,6 +187,23 @@ class Kernel {
             refs,
             manifest
         });
+    }
+
+    async isManifestOutOfDate() {
+        // We can only check manifests that have templates.
+        if (!this.settings.manifest.template) {
+            return false;
+        }
+
+        const prev = await this.context.readCacheProperty(OUTPUT_CACHE_KEY);
+        if (!prev.manifest) {
+            return false;
+        }
+
+        return this.context.isTargetOutOfDate(
+            this.settings.manifest.template,
+            this.settings.output
+        );
     }
 }
 

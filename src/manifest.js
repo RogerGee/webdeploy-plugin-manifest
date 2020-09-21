@@ -36,8 +36,11 @@ class ManifestBase {
     }
 
     async getTemplate(context) {
-        let target = context.lookupTarget(this.template);
+        let target = context.lookupTarget(this.options.template);
         if (target) {
+            // Remove the target from the context.
+            context.removeTargets(target);
+
             return target;
         }
 
