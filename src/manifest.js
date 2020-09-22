@@ -41,10 +41,14 @@ class ManifestBase {
             // Remove the target from the context.
             context.removeTargets(target);
 
-            return target;
+            // Add a simple dependency connection.
+            context.graph.addConnection(this.options.template,this.options.output);
+        }
+        else {
+            target = context.createTargetFromTree(this.options.template,false);
         }
 
-        return context.createTargetFromTree(this.options.template,false);
+        return target;
     }
 }
 

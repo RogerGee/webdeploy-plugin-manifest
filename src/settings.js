@@ -157,6 +157,7 @@ class PluginSettings {
         else {
             throw new PluginError("manifest.type '%s' is not supported",this.manifest.type);
         }
+        this.manifest.output = this.output;
 
         this.targets = check_optional(
             check,
