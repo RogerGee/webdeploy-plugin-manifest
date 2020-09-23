@@ -4,6 +4,7 @@
  * manifest (webdeploy plugin)
  */
 
+const xpath = require("path").posix;
 const minimatch = require("minimatch");
 
 class ManifestBase {
@@ -21,9 +22,14 @@ class ManifestBase {
                 manifest[key] = [];
             }
 
+            const options = {
+                dot: true
+            };
+
             for (let i = 0;i < this.refs.length;++i) {
                 for (let key in this.options.groups) {
-                    if (minimatch(this.refs[i],this.options.groups[key])) {
+                    const matchref = xpath.resolve("/",this.refs[i]);
+                    if (minimatch(matchref,this.options.groups[key],options)) {
                         manifest[key].push(this.refs[i]);
                     }
                 }
