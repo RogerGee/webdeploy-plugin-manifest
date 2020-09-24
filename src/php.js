@@ -22,6 +22,30 @@ const HEADER =
 
 `;
 
+function php_value(val) {
+    if (typeof val === "string") {
+        return "'" + escape_single(val) + "'";
+    }
+
+    if (typeof val === "number") {
+        return val.toString();
+    }
+
+    if (typeof val === "boolean") {
+        if (val) {
+            return "true";
+        }
+
+        return "false";
+    }
+
+    if (Array.isArray(val)) {
+        return "array(" + val.map(php_value).join(", ")  + ")";
+    }
+
+    return "null";
+}
+
 function isURL(ref) {
     try {
         const result = new url.URL(ref);
@@ -78,6 +102,12 @@ class PHPManifest extends ManifestBase {
         const manifest = this.createManifest();
 
         let code = HEADER + "return array(\n";
+
+        if (this.options.extra) {
+            Object.keys(this.options.extra).forEach((k) => {
+                code += format("  '%s' => ",k) + php_value(this.options.extra[k]) + ",\n";
+            });
+        }
 
         if (Array.isArray(manifest)) {
             if (this.options.prefixed) {

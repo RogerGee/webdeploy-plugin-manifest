@@ -132,6 +132,7 @@ class PHPManifestSettings extends ManifestSettings {
         super(settings);
 
         this.prefixed = check_optional(check,"manifest",settings,"prefixed",false,"boolean");
+        this.extra = check_optional(check,"manifest",settings,"extra",null,"object");
     }
 }
 
