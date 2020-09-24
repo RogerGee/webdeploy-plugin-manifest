@@ -28,7 +28,7 @@ class ManifestBase {
 
             for (let i = 0;i < this.refs.length;++i) {
                 for (let key in this.options.groups) {
-                    const matchref = xpath.resolve("/",this.refs[i]);
+                    const matchref = xpath.resolve("/",this.refs[i]).slice(1);
                     if (minimatch(matchref,this.options.groups[key],options)) {
                         manifest[key].push(this.refs[i]);
                     }

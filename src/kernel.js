@@ -10,7 +10,8 @@ const minimatch = require("minimatch");
 const merge_refs = require("./merge");
 const { promisify } = require("util");
 const { JsonManifest } = require("./json");
-const { HTMLManifest } = require("./html")
+const { HTMLManifest } = require("./html");
+const { PHPManifest } = require("./php");
 const { PluginError } = require("./error");
 const { PluginSettings } = require("./settings");
 
@@ -26,7 +27,7 @@ function manifestFactory(refs,options) {
     }
 
     if (options.type == "php") {
-        return; //TODO
+        return new PHPManifest(refs,options);
     }
 
     throw new PluginError("invalid manifest type '%s'",options.type);

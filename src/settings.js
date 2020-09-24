@@ -130,6 +130,8 @@ class HTMLManifestSettings extends ManifestSettings {
 class PHPManifestSettings extends ManifestSettings {
     constructor(settings) {
         super(settings);
+
+        this.prefixed = check_optional(check,"manifest",settings,"prefixed",false,"boolean");
     }
 }
 
