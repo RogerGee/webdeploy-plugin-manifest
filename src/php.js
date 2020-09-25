@@ -43,6 +43,12 @@ function php_value(val) {
         return "array(" + val.map(php_value).join(", ")  + ")";
     }
 
+    if (val && typeof val === "object") {
+        return "array(" + Object.keys(val).map((key) => {
+            return format("'%s' => %s",escape_single(key),php_value(val[key]));
+        }).join(", ") + ")";
+    }
+
     return "null";
 }
 
