@@ -1,6 +1,6 @@
 {
   "name": "@webdeploy/plugin-manifest",
-  "version": "1.0.0-dev",
+  "version": "1.0.0",
   "description": "Deploy plugin to generate manifests from output file references",
   "main": "plugin.js",
   "scripts": {
