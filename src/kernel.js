@@ -5,6 +5,7 @@
  */
 
 const fs = require("fs");
+const url = require("url");
 const path = require("path");
 const minimatch = require("minimatch");
 const merge_refs = require("./merge");
@@ -56,6 +57,16 @@ function apply_file_suffix(filePath,suffix) {
     return path.join(parsed.dir,parsed.name + parsed.ext);
 }
 
+function is_url(ref) {
+    try {
+        const result = new url.URL(ref);
+    } catch (ex) {
+        return false;
+    }
+
+    return true;
+}
+
 class Kernel {
     constructor(context,settings) {
         this.context = context;
@@ -103,6 +114,11 @@ class Kernel {
 
         // Process initial refs in matrix. Apply cache busting if configured.
         flatten_matrix(matrix).forEach((ref) => {
+            // Do not process URLs.
+            if (is_url(ref.file)) {
+                return;
+            }
+
             let target = this.context.lookupTarget(ref.file);
             if (target) {
                 if (!this.settings.disableCacheBusting && !isDev) {
