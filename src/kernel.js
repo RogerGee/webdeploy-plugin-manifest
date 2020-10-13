@@ -38,7 +38,7 @@ function flatten_matrix(list) {
     let result = [];
 
     for (let i = 0;i < list.length;++i) {
-        result = result.concat(list[i]);
+        result = result.concat(list[i].refs);
     }
 
     return result;
@@ -158,11 +158,16 @@ class Kernel {
                     }
 
                     // Each target implies its own singleton group of refs.
-                    matrix.push([{
-                        file: originalPath,
-                        entry: targetPath,
-                        unlink: true
-                    }]);
+                    matrix.push({
+                        key: matrix.length,
+                        refs: [
+                            {
+                                file: originalPath,
+                                entry: targetPath,
+                                unlink: true
+                            }
+                        ]
+                    });
 
                     found.add(targetPath);
                 }
@@ -170,9 +175,30 @@ class Kernel {
         }
     }
 
+    async loadPrevOutput() {
+        const output = await this.context.readCacheProperty(OUTPUT_CACHE_KEY);
+        if (!output) {
+            return output;
+        }
+
+        for (let i = 0;i < output.length;++i) {
+            const entry = output[i];
+
+            if (Array.isArray(entry)) {
+                // Transform old array format into object format.
+                output[i] = {
+                    key: i,
+                    refs: entry
+                };
+            }
+        }
+
+        return output;
+    }
+
     async preprocessOutput(refs,manifest) {
         let newlist = refs;
-        const prev = await this.context.readCacheProperty(OUTPUT_CACHE_KEY);
+        const prev = await this.loadPrevOutput();
 
         if (prev && prev.refs && prev.refs.length > 0) {
             newlist = merge_refs(this.context,refs,prev.refs,this.unlink);

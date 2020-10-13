@@ -219,17 +219,37 @@ class PluginSettings {
         // Ensure "refs" is a list of lists (maximum of 1-level).
 
         for (let i = 0;i < this.refs.length;++i) {
+            const ctx = format_context("settings.refs",i);
             let ref = this.refs[i];
 
             if (Array.isArray(ref)) {
-                const ctx = format_context("settings.refs",i);
                 check_array(ctx,this.refs,i,"string");
                 for (let j = 0;j < ref.length;++j) {
                     ref[j] = { file:ref[j], entry:ref[j], unlink:false };
                 }
+
+                this.refs[i] = { key:i, refs:ref };
+            }
+            else if (typeof ref === "object") {
+                if (!ref.key || !ref.refs) {
+                    throw new PluginError("'%s' missing 'key' and/or 'refs' properties",ctx);
+                }
+
+                if (typeof ref.key !== "string" || ref.key.match(/^[0-9]+$/)) {
+                    throw new PluginError("'%s' is malformed: key '%s' is invalid",ctx,ref.key);
+                }
+
+                check_array(ctx,ref,"refs","string");
+
+                let refs = [];
+                for (let j = 0;j < ref.length;++j) {
+                    refs.push({ file:ref.refs[j], entry:ref.refs[j], unlink:false });
+                }
+
+                this.refs[i] = { key:ref.key, refs };
             }
             else {
-                this.refs[i] = [{ file:ref, entry:ref, unlink:false }];
+                this.refs[i] = { key:i, refs:[{ file:ref, entry:ref, unlink:false }] };
             }
         }
     }
