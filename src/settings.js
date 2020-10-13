@@ -20,6 +20,9 @@ function check_val(context,key,val,...types) {
     if (Array.isArray(val)) {
         type = "array";
     }
+    else if (val instanceof RegExp) {
+        type = "regex";
+    }
     else {
         type = typeof val;
     }
@@ -203,6 +206,7 @@ class PluginSettings {
             "boolean"
         );
 
+        // DEPRECATED
         this.disableCacheBusting = check_optional(
             check,
             "settings",
@@ -211,6 +215,30 @@ class PluginSettings {
             false,
             "boolean"
         );
+
+        this.cacheBusting = check_optional(
+            check,
+            "settings",
+            settings,
+            "cacheBusting",
+            [/\.js$/,/\.css$/],
+            "boolean",
+            "array"
+        );
+
+        if (Array.isArray(this.cacheBusting)) {
+            this.cacheBusting = check_array(
+                "settings",
+                this,
+                "cacheBusting",
+                "string","regex"
+            );
+        }
+
+        if (this.disableCacheBusting) {
+            this.cacheBusting = false;
+        }
+        delete this.disableCacheBusting;
 
         this._normalizeRefs();
     }

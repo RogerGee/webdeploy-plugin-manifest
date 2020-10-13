@@ -121,7 +121,7 @@ class Kernel {
 
             let target = this.context.lookupTarget(ref.file);
             if (target) {
-                if (!this.settings.disableCacheBusting && !isDev) {
+                if (!isDev && this.checkCacheBusting(target)) {
                     const newName = apply_file_suffix(
                         target.getTargetName(),
                         this.suffix
@@ -147,7 +147,7 @@ class Kernel {
                 if (this.settings.targets.some((glob) => minimatch(targetPath,glob))) {
                     let entry;
                     let originalPath = targetPath;
-                    if (!this.settings.disableCacheBusting && !isDev) {
+                    if (!isDev && this.checkCacheBusting(target)) {
                         const newName = apply_file_suffix(
                             target.getTargetName(),
                             this.suffix
@@ -274,6 +274,34 @@ class Kernel {
             this.settings.manifest.template,
             this.settings.output
         );
+    }
+
+    checkCacheBusting(target) {
+        if (!this.settings.cacheBusting) {
+            return false;
+        }
+
+        if (this.settings.cacheBusting === true) {
+            return true;
+        }
+
+        const source = target.getSourceTargetPath();
+
+        let i = 0;
+        while (i < this.settings.cacheBusting.length) {
+            const entry = this.settings.cacheBusting[i++];
+
+            if (entry instanceof RegExp) {
+                if (source.match(entry)) {
+                    return true;
+                }
+            }
+            else if (minimatch(source,entry)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
