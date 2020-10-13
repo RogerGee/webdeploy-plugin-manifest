@@ -175,19 +175,38 @@ class Kernel {
         }
     }
 
-    async loadPrevOutput() {
+    async loadPrevOutput(currentRefs) {
         const output = await this.context.readCacheProperty(OUTPUT_CACHE_KEY);
-        if (!output) {
-            return output;
+        if (!output
+            || !output.refs
+            || !Array.isArray(output.refs)
+            || typeof output.manifest !== "string")
+        {
+            return null;
         }
 
-        for (let i = 0;i < output.length;++i) {
-            const entry = output[i];
+        for (let i = 0;i < output.refs.length;++i) {
+            const entry = output.refs[i];
 
             if (Array.isArray(entry)) {
+                let key;
+
+                // Try to match with row in current refs.
+
+                const currentEntry = currentRefs.find((cur) => {
+                    return cur.refs.some((a) => entry.some((b) => a.file === b.file));
+                });
+
+                if (currentEntry) {
+                    key = currentEntry.key;
+                }
+                else {
+                    key = i;
+                }
+
                 // Transform old array format into object format.
-                output[i] = {
-                    key: i,
+                output.refs[i] = {
+                    key,
                     refs: entry
                 };
             }
@@ -198,9 +217,9 @@ class Kernel {
 
     async preprocessOutput(refs,manifest) {
         let newlist = refs;
-        const prev = await this.loadPrevOutput();
+        const prev = await this.loadPrevOutput(refs);
 
-        if (prev && prev.refs && prev.refs.length > 0) {
+        if (prev && prev.refs.length > 0) {
             newlist = merge_refs(this.context,refs,prev.refs,this.unlink);
         }
 

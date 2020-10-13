@@ -80,7 +80,7 @@ function check_array(context,settings,name,...types) {
         );
     }
 
-    return check_array_impl(context,val,...types);
+    return check_array_impl(format_context(context,key),val,...types);
 }
 
 function check_array_ensure(context,settings,name,...types) {
@@ -181,7 +181,7 @@ class PluginSettings {
             settings,
             "refs",
             [],
-            "string","array"
+            "string","array","object"
         );
 
         this.groups = check_optional(
@@ -242,7 +242,7 @@ class PluginSettings {
                 check_array(ctx,ref,"refs","string");
 
                 let refs = [];
-                for (let j = 0;j < ref.length;++j) {
+                for (let j = 0;j < ref.refs.length;++j) {
                     refs.push({ file:ref.refs[j], entry:ref.refs[j], unlink:false });
                 }
 
