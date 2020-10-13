@@ -230,7 +230,7 @@ class Kernel {
         return newlist;
     }
 
-    async postprocessOutput(refs,manifest) {
+    async postprocessOutput(matrix,manifest) {
         const unlink = promisify(fs.unlink);
         for (let i = 0;i < this.unlink.length;++i) {
             const filepath = this.context.makeDeployPath(this.unlink[i]);
@@ -242,6 +242,14 @@ class Kernel {
                 if (err.code != "ENOENT") {
                     throw err;
                 }
+            }
+        }
+
+        // Keep all non-empty rows from the ref matrix.
+        let refs = [];
+        for (let i = 0;i < matrix.length;++i) {
+            if (matrix[i].refs.length > 0) {
+                refs.push(matrix[i]);
             }
         }
 
