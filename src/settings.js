@@ -193,8 +193,14 @@ class PluginSettings {
             settings,
             "groups",
             false,
-            "object"
+            "object","array"
         );
+        if (Array.isArray(this.groups)) {
+            check_array("settings",this,"groups","object");
+        }
+        else {
+            this.groups = [this.groups];
+        }
         this.manifest.groups = this.groups;
 
         this.disableTracking = check_optional(

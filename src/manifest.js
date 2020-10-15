@@ -18,19 +18,30 @@ class ManifestBase {
     createManifest() {
         if (this.options.groups) {
             const manifest = {};
-            for (let key in this.options.groups) {
-                manifest[key] = [];
+            for (let i = 0;i < this.options.groups.length;++i) {
+                for (let key in this.options.groups[i]) {
+                    manifest[key] = [];
+                }
             }
 
             const options = {
                 dot: true
             };
 
-            for (let i = 0;i < this.refs.length;++i) {
-                for (let key in this.options.groups) {
-                    const matchref = xpath.resolve("/",this.refs[i]).slice(1);
-                    if (minimatch(matchref,this.options.groups[key],options)) {
-                        manifest[key].push(this.refs[i]);
+            const refs = this.refs.slice();
+
+            for (let i = 0;i < this.options.groups.length;++i) {
+                for (let key in this.options.groups[i]) {
+                    for (let j = 0;j < refs.length;++j) {
+                        if (!refs[j]) {
+                            continue;
+                        }
+
+                        const matchref = xpath.resolve("/",refs[j]).slice(1);
+                        if (minimatch(matchref,this.options.groups[i][key],options)) {
+                            manifest[key].push(refs[j]);
+                            refs[j] = null;
+                        }
                     }
                 }
             }
