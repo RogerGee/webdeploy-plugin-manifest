@@ -38,7 +38,7 @@ function flatten_matrix(list) {
     let result = [];
 
     for (let i = 0;i < list.length;++i) {
-        result = result.concat(list[i]);
+        result = result.concat(list[i].refs);
     }
 
     return result;
@@ -121,7 +121,7 @@ class Kernel {
 
             let target = this.context.lookupTarget(ref.file);
             if (target) {
-                if (!this.settings.disableCacheBusting && !isDev) {
+                if (!isDev && this.checkCacheBusting(target)) {
                     const newName = apply_file_suffix(
                         target.getTargetName(),
                         this.suffix
@@ -147,7 +147,7 @@ class Kernel {
                 if (this.settings.targets.some((glob) => minimatch(targetPath,glob))) {
                     let entry;
                     let originalPath = targetPath;
-                    if (!this.settings.disableCacheBusting && !isDev) {
+                    if (!isDev && this.checkCacheBusting(target)) {
                         const newName = apply_file_suffix(
                             target.getTargetName(),
                             this.suffix
@@ -158,11 +158,16 @@ class Kernel {
                     }
 
                     // Each target implies its own singleton group of refs.
-                    matrix.push([{
-                        file: originalPath,
-                        entry: targetPath,
-                        unlink: true
-                    }]);
+                    matrix.push({
+                        key: matrix.length,
+                        refs: [
+                            {
+                                file: originalPath,
+                                entry: targetPath,
+                                unlink: true
+                            }
+                        ]
+                    });
 
                     found.add(targetPath);
                 }
@@ -170,11 +175,51 @@ class Kernel {
         }
     }
 
+    async loadPrevOutput(currentRefs) {
+        const output = await this.context.readCacheProperty(OUTPUT_CACHE_KEY);
+        if (!output
+            || !output.refs
+            || !Array.isArray(output.refs)
+            || typeof output.manifest !== "string")
+        {
+            return null;
+        }
+
+        for (let i = 0;i < output.refs.length;++i) {
+            const entry = output.refs[i];
+
+            if (Array.isArray(entry)) {
+                let key;
+
+                // Try to match with row in current refs.
+
+                const currentEntry = currentRefs.find((cur) => {
+                    return cur.refs.some((a) => entry.some((b) => a.file === b.file));
+                });
+
+                if (currentEntry) {
+                    key = currentEntry.key;
+                }
+                else {
+                    key = i;
+                }
+
+                // Transform old array format into object format.
+                output.refs[i] = {
+                    key,
+                    refs: entry
+                };
+            }
+        }
+
+        return output;
+    }
+
     async preprocessOutput(refs,manifest) {
         let newlist = refs;
-        const prev = await this.context.readCacheProperty(OUTPUT_CACHE_KEY);
+        const prev = await this.loadPrevOutput(refs);
 
-        if (prev && prev.refs && prev.refs.length > 0) {
+        if (prev && prev.refs.length > 0) {
             newlist = merge_refs(this.context,refs,prev.refs,this.unlink);
         }
 
@@ -185,7 +230,7 @@ class Kernel {
         return newlist;
     }
 
-    async postprocessOutput(refs,manifest) {
+    async postprocessOutput(matrix,manifest) {
         const unlink = promisify(fs.unlink);
         for (let i = 0;i < this.unlink.length;++i) {
             const filepath = this.context.makeDeployPath(this.unlink[i]);
@@ -197,6 +242,14 @@ class Kernel {
                 if (err.code != "ENOENT") {
                     throw err;
                 }
+            }
+        }
+
+        // Keep all non-empty rows from the ref matrix.
+        let refs = [];
+        for (let i = 0;i < matrix.length;++i) {
+            if (matrix[i].refs.length > 0) {
+                refs.push(matrix[i]);
             }
         }
 
@@ -221,6 +274,34 @@ class Kernel {
             this.settings.manifest.template,
             this.settings.output
         );
+    }
+
+    checkCacheBusting(target) {
+        if (!this.settings.cacheBusting) {
+            return false;
+        }
+
+        if (this.settings.cacheBusting === true) {
+            return true;
+        }
+
+        const source = target.getSourceTargetPath();
+
+        let i = 0;
+        while (i < this.settings.cacheBusting.length) {
+            const entry = this.settings.cacheBusting[i++];
+
+            if (entry instanceof RegExp) {
+                if (source.match(entry)) {
+                    return true;
+                }
+            }
+            else if (minimatch(source,entry)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

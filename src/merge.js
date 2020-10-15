@@ -12,20 +12,32 @@ function merge_refs(context,refs,prev,unlink) {
     // Make a pass through the new list to figure out what files to
     // delete.
     for (let i = 0;i < refs.length;++i) {
-        const list = refs[i];
+        const entry = refs[i];
 
-        // Find group in previous output.
-        const index = prev.findIndex((group) => {
-            return list.some((a) => group.some((b) => a.file == b.file));
+        // Find corresponding entry in previous output.
+        const index = prev.findIndex((prevEntry) => {
+            // For entries having numeric keys, the entries correspond if we
+            // identify at least one ref that matches via its 'file' component.
+            if (typeof entry.key === "number") {
+                if (typeof prevEntry.key === "number") {
+                    return entry.refs.some((a) => prevEntry.refs.some((b) => a.file == b.file));
+                }
+
+                return false;
+            }
+
+            // Otherwise they correspond directly via key.
+
+            return entry.key === prevEntry.key;
         });
 
         if (index >= 0) {
-            const old = prev[index];
+            const old = prev[index].refs;
             visited[index] = newlist.length;
 
             for (let j = 0;j < old.length;++j) {
                 const ref = old[j];
-                const found = list.find((record) => record.file == ref.file);
+                const found = entry.refs.find((record) => record.file == ref.file);
 
                 if ((!found || found.entry != ref.entry) && ref.unlink) {
                     unlink.push(ref.entry);
@@ -33,25 +45,25 @@ function merge_refs(context,refs,prev,unlink) {
             }
         }
 
-        newlist.push(list);
+        newlist.push(entry);
         reverse.push(index);
     }
 
-    // Make a pass through the old list to bring in any groups that were
-    // not visited.
+    // Make a pass through the old list to bring in any entries that were not
+    // visited.
     for (let i = 0;i < prev.length;++i) {
         if (visited[i] >= 0) {
             continue;
         }
 
-        const list = prev[i];
+        const entry = prev[i];
 
-        // TODO Figure out if the build products (if any) in the group
-        // still have build targets in the project tree. If not, then we
-        // delete the group.
+        // TODO Figure out if the build products (if any) in the entry still
+        // have build targets in the project tree. If not, then we delete the
+        // entry (and all its refs).
         // ...
 
-        // Scan to next group that was visited.
+        // Scan to the next entry that was visited (if any).
         let next = i+1;
         while (next < prev.length && visited[next] < 0) {
             next += 1;
@@ -59,19 +71,20 @@ function merge_refs(context,refs,prev,unlink) {
 
         if (next < prev.length) {
             // Walk backwards to either the beginning of the list or before
-            // the last group that was visited.
+            // the last entry that was visited.
             let index = visited[next];
             while (index-1 >= 0 && reverse[index-1] < 0) {
                 index -= 1;
             }
 
-            // Insert the group before the next visited group *and* any
-            // new groups before it.
-            newlist.splice(index,0,list);
+            // Insert the entry before the next visited entry *and* any new
+            // entries before it.
+            newlist.splice(index,0,entry);
             reverse.splice(index,0,i);
         }
         else {
-            newlist.push(list);
+            // Otherwise append the entry to the end of the list.
+            newlist.push(entry);
             reverse.push(i);
         }
     }

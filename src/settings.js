@@ -20,6 +20,9 @@ function check_val(context,key,val,...types) {
     if (Array.isArray(val)) {
         type = "array";
     }
+    else if (val instanceof RegExp) {
+        type = "regex";
+    }
     else {
         type = typeof val;
     }
@@ -80,7 +83,7 @@ function check_array(context,settings,name,...types) {
         );
     }
 
-    return check_array_impl(context,val,...types);
+    return check_array_impl(format_context(context,key),val,...types);
 }
 
 function check_array_ensure(context,settings,name,...types) {
@@ -181,7 +184,7 @@ class PluginSettings {
             settings,
             "refs",
             [],
-            "string","array"
+            "string","array","object"
         );
 
         this.groups = check_optional(
@@ -190,8 +193,14 @@ class PluginSettings {
             settings,
             "groups",
             false,
-            "object"
+            "object","array"
         );
+        if (Array.isArray(this.groups)) {
+            check_array("settings",this,"groups","object");
+        }
+        else {
+            this.groups = [this.groups];
+        }
         this.manifest.groups = this.groups;
 
         this.disableTracking = check_optional(
@@ -203,6 +212,7 @@ class PluginSettings {
             "boolean"
         );
 
+        // DEPRECATED
         this.disableCacheBusting = check_optional(
             check,
             "settings",
@@ -212,6 +222,30 @@ class PluginSettings {
             "boolean"
         );
 
+        this.cacheBusting = check_optional(
+            check,
+            "settings",
+            settings,
+            "cacheBusting",
+            [/\.js$/,/\.css$/],
+            "boolean",
+            "array"
+        );
+
+        if (Array.isArray(this.cacheBusting)) {
+            this.cacheBusting = check_array(
+                "settings",
+                this,
+                "cacheBusting",
+                "string","regex"
+            );
+        }
+
+        if (this.disableCacheBusting) {
+            this.cacheBusting = false;
+        }
+        delete this.disableCacheBusting;
+
         this._normalizeRefs();
     }
 
@@ -219,17 +253,37 @@ class PluginSettings {
         // Ensure "refs" is a list of lists (maximum of 1-level).
 
         for (let i = 0;i < this.refs.length;++i) {
+            const ctx = format_context("settings.refs",i);
             let ref = this.refs[i];
 
             if (Array.isArray(ref)) {
-                const ctx = format_context("settings.refs",i);
                 check_array(ctx,this.refs,i,"string");
                 for (let j = 0;j < ref.length;++j) {
                     ref[j] = { file:ref[j], entry:ref[j], unlink:false };
                 }
+
+                this.refs[i] = { key:i, refs:ref };
+            }
+            else if (typeof ref === "object") {
+                if (!ref.key || !ref.refs) {
+                    throw new PluginError("'%s' missing 'key' and/or 'refs' properties",ctx);
+                }
+
+                if (typeof ref.key !== "string" || ref.key.match(/^[0-9]+$/)) {
+                    throw new PluginError("'%s' is malformed: key '%s' is invalid",ctx,ref.key);
+                }
+
+                check_array(ctx,ref,"refs","string");
+
+                let refs = [];
+                for (let j = 0;j < ref.refs.length;++j) {
+                    refs.push({ file:ref.refs[j], entry:ref.refs[j], unlink:false });
+                }
+
+                this.refs[i] = { key:ref.key, refs };
             }
             else {
-                this.refs[i] = [{ file:ref, entry:ref, unlink:false }];
+                this.refs[i] = { key:i, refs:[{ file:ref, entry:ref, unlink:false }] };
             }
         }
     }
